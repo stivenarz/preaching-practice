@@ -1,6 +1,5 @@
 node_modules
 .pnpm-store
-src/environments/environment.ts
 .angular
 .DS_store
 .env
