@@ -4,3 +4,4 @@ src/environments/environment.ts
 .angular
 .DS_store
 .env
+www
