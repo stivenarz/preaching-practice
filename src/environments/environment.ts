@@ -6,12 +6,12 @@ export const environment = {
   production: false,
   
   firebaseConfig: {
-    apiKey: 'AIzaSyBTZ1o8pMWPOq3nE_Wt7hQyNpbvQgF6WAw',
-    authDomain: 'posutilitie-stivenarz.firebaseapp.com',
-    projectId: 'posutilitie-stivenarz',
-    storageBucket: 'posutilitie-stivenarz.appspot.com',
-    messagingSenderId: '560410831919',
-    appId: '1:560410831919:web:f863c315c64f760e3e2ada',
+    apiKey: "AIzaSyAsDwtg90bfwA08X9NPd4kYqSNZyx6EJm4",
+    authDomain: "preaching-practice.firebaseapp.com",
+    projectId: "preaching-practice",
+    storageBucket: "preaching-practice.appspot.com",
+    messagingSenderId: "1049372109402",
+    appId: "1:1049372109402:web:28317a2123d504af4f0663"
   },
   
 };
