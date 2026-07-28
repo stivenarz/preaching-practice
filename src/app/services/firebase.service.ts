@@ -1,8 +1,9 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { environment } from 'src/environments/environment';
 import { initializeApp } from 'firebase/app'
-import { getFirestore, collection, query, doc, addDoc, setDoc, getDocs, where, getDoc, deleteDoc, onSnapshot, Unsubscribe } from 'firebase/firestore'
+import { getFirestore, collection, doc, addDoc, setDoc, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore'
 import { Observable, Subject } from 'rxjs';
+import { createMockFirestoreDatabase } from './fake-firestore.js';
 
 @Injectable({
   providedIn: 'root'
@@ -11,8 +12,10 @@ import { Observable, Subject } from 'rxjs';
 export class FireDatabaseService implements OnDestroy {
 
   /** Variables de firebase */
-  private firebase = initializeApp(environment.firebaseConfig)
-  private database = getFirestore(this.firebase)
+  private firebase: any = null
+  private database: any = null
+  private mockDatabase: any = null
+  private useMockDatabase = false
   
   /** Objetos de contenido */
   private collections$: any = {}
@@ -22,12 +25,37 @@ export class FireDatabaseService implements OnDestroy {
   private subs: Array<any> = []
   
   constructor() {
+    this.initializeDatabase()
+  }
 
+  private initializeDatabase(): void {
+    const firebaseConfig = (environment as any).firebaseConfig
+    const hasValidConfig = !!firebaseConfig && typeof firebaseConfig === 'object' && firebaseConfig.projectId && firebaseConfig.apiKey
+
+    if (!hasValidConfig) {
+      this.enableMockDatabase('Firebase config missing')
+      return
+    }
+
+    try {
+      this.firebase = initializeApp(firebaseConfig)
+      this.database = getFirestore(this.firebase)
+      this.useMockDatabase = false
+    } catch (error) {
+      this.enableMockDatabase(error)
+    }
+  }
+
+  private enableMockDatabase(reason: unknown): void {
+    console.warn('Firebase no disponible. Usando almacenamiento simulado.', reason)
+    this.mockDatabase = createMockFirestoreDatabase()
+    this.database = this.mockDatabase
+    this.useMockDatabase = true
   }
 
   /** Siclo de vida */
   ngOnDestroy(): void {
-    this.subs.forEach(item => item.Unsubscribe())
+    this.subs.forEach((item) => item?.())
   }
 
   /**
@@ -64,9 +92,15 @@ export class FireDatabaseService implements OnDestroy {
    * @param callBack Funcion, se ejecuta cuando detecta cambios
    * @returns void
    */
-  subscription = async (collectionName: string, callBack: Function) => {
+  subscription = (collectionName: string, callBack: Function) => {
+    if (this.useMockDatabase) {
+      return this.mockDatabase.subscribe(collectionName.toLowerCase(), () => {
+        if (callBack) callBack(collectionName)
+      })
+    }
+
     const collectionRef = collection(this.database, collectionName.toLowerCase());
-    return onSnapshot(collectionRef, (snapshot) => {
+    return onSnapshot(collectionRef, () => {
       if (callBack) callBack(collectionName)
     })
   }
@@ -79,7 +113,11 @@ export class FireDatabaseService implements OnDestroy {
    */
   async addNewDocument(collectionName: string, value: any): Promise<any> {
     try {
-      return await addDoc(collection(this.database, collectionName), value);
+      if (this.useMockDatabase) {
+        return await this.mockDatabase.addDocument(collectionName.toLowerCase(), value)
+      }
+
+      return await addDoc(collection(this.database, collectionName.toLowerCase()), value);
     } catch (e) {
       console.error("Error adding document: ", e);
       return null
@@ -95,7 +133,11 @@ export class FireDatabaseService implements OnDestroy {
    */
   async setDocument(collectionName: string, documentId: string, value: any): Promise<any> {
     try {
-      const documentRef = doc(this.database, collectionName, documentId)
+      if (this.useMockDatabase) {
+        return await this.mockDatabase.setDocument(collectionName.toLowerCase(), documentId, value)
+      }
+
+      const documentRef = doc(this.database, collectionName.toLowerCase(), documentId)
       return await setDoc(documentRef, value)
     } catch (error) {
       console.error('error setting document: ', error)
@@ -111,8 +153,14 @@ export class FireDatabaseService implements OnDestroy {
   
   async getAllDocuments(collectionName: string): Promise<any> {
     try {
+      const normalizedCollectionName = collectionName.toLowerCase()
+
+      if (this.useMockDatabase) {
+        return await this.mockDatabase.getAllDocuments(normalizedCollectionName)
+      }
+
       const documents: any[] | PromiseLike<any[]> = []
-      const querySnapshot = await getDocs(collection(this.database, collectionName))
+      const querySnapshot = await getDocs(collection(this.database, normalizedCollectionName))
       querySnapshot.forEach((doc) => {
         documents.push({
           id: doc.id,
@@ -135,7 +183,11 @@ export class FireDatabaseService implements OnDestroy {
    */
   async deleteDocument(collectionName: string, id: string): Promise<any> {
     try {
-      const documentRef = doc(this.database, collectionName, id)
+      if (this.useMockDatabase) {
+        return await this.mockDatabase.deleteDocument(collectionName.toLowerCase(), id)
+      }
+
+      const documentRef = doc(this.database, collectionName.toLowerCase(), id)
       return await deleteDoc(documentRef)
     } catch (error) {
       console.error("Error deleting document: ", error);
